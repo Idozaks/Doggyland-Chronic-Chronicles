@@ -40,9 +40,10 @@ grow_button_held = False
 current_state = MENU
 growing_rate = 0.1
 watered_time = 0
+grow_increment = 0
 
 def main():
-    global current_state, grow_progress, harvest_ready, current_strain, grow_button_held, growing_rate, watered_time
+    global current_state, grow_progress, harvest_ready, current_strain, grow_button_held, growing_rate, watered_time, grow_increment
     clock = pygame.time.Clock()
     last_state = None  # Keep track of the last state
 
@@ -68,6 +69,9 @@ def main():
         SHOP: "SHOP"
     }
 
+    harvest_popup = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 - 100, 300, 200)
+    harvest_button = pygame.Rect(WIDTH // 2 - 75, HEIGHT // 2 + 25, 150, 50)
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -84,28 +88,16 @@ def main():
                             harvest_ready = False
                     elif current_state == PLAYING:
                         if grow_button.collidepoint(mouse_pos):
-                            print("Button clicked: Grow")
-                            grow_progress += grow_increment
-                            if grow_progress >= 1:  # Changed from current_strain.growth_time
-                                grow_progress = 1
-                                harvest_ready = True
-                            print(f"Grow progress: {grow_progress:.2f}")
+                            if not harvest_ready:
+                                grow_plant()
                         elif water_button.collidepoint(mouse_pos):
-                            print("Button clicked: Water")
-                            watered_time = time.time()
+                            water_plant()
                         elif fertilize_button.collidepoint(mouse_pos):
-                            print("Button clicked: Fertilize")
-                            growing_rate += FERTILIZER_BOOST
+                            fertilize_plant()
                         elif shop_button.collidepoint(mouse_pos):
-                            print("Button clicked: Shop")
                             current_state = SHOP
-                        elif harvest_ready and grow_button.collidepoint(mouse_pos):
-                            print("Plant harvested!")
-                            grow_progress = 0
-                            harvest_ready = False
-                            clicks_to_grow = random.randint(10, 15)
-                            grow_increment = 1 / clicks_to_grow
-                            print(f"New plant started. Clicks to grow: {clicks_to_grow}")
+                        elif harvest_ready and harvest_button.collidepoint(mouse_pos):
+                            harvest_plant()
                     elif current_state == SHOP:
                         if back_button.collidepoint(mouse_pos):
                             print("Button clicked: Back")
@@ -113,6 +105,22 @@ def main():
                         for button, strain in zip(strain_buttons, strains):
                             if button.collidepoint(mouse_pos):
                                 print(f"Button clicked: Strain - {strain.name}")  # For now, just print the strain name
+            elif event.type == pygame.KEYDOWN:
+                if current_state == PLAYING:
+                    if event.key == pygame.K_g:
+                        grow_plant()
+                    elif event.key == pygame.K_w:
+                        water_plant()
+                    elif event.key == pygame.K_f:
+                        fertilize_plant()
+                    elif event.key == pygame.K_s:
+                        current_state = SHOP
+                    elif event.key == pygame.K_h and harvest_ready:
+                        harvest_plant()
+                elif current_state == SHOP:
+                    if event.key == pygame.K_b:
+                        current_state = PLAYING
+
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button
                     grow_button_held = False
@@ -134,6 +142,8 @@ def main():
             draw_menu(screen)
         elif current_state == PLAYING:
             grow_button, water_button, fertilize_button, shop_button = draw_game(screen, player, current_strain, grow_progress, harvest_ready, growing_rate, watered_time)
+            if harvest_ready:
+                draw_harvest_popup(screen, harvest_popup, harvest_button)
         elif current_state == SHOP:
             back_button, strain_buttons = draw_shop(screen, strains, strain_buttons)
 
@@ -144,6 +154,44 @@ def main():
 
         pygame.display.flip()
         clock.tick(60)
+
+def grow_plant():
+    global grow_progress, harvest_ready
+    print("Growing plant")
+    grow_progress += grow_increment
+    if grow_progress >= 1:
+        grow_progress = 1
+        harvest_ready = True
+    print(f"Grow progress: {grow_progress:.2f}")
+
+def water_plant():
+    global watered_time
+    print("Watering plant")
+    watered_time = time.time()
+
+def fertilize_plant():
+    global growing_rate
+    print("Fertilizing plant")
+    growing_rate += FERTILIZER_BOOST
+
+def harvest_plant():
+    global grow_progress, harvest_ready, current_strain, grow_increment
+    print("Plant harvested!")
+    grow_progress = 0
+    harvest_ready = False
+    clicks_to_grow = random.randint(10, 15)
+    grow_increment = 1 / clicks_to_grow
+    current_strain = random.choice(strains)
+    print(f"New plant started: {current_strain.name}. Clicks to grow: {clicks_to_grow}")
+
+def draw_harvest_popup(screen, popup_rect, button_rect):
+    pygame.draw.rect(screen, (200, 200, 200), popup_rect)
+    pygame.draw.rect(screen, (100, 100, 100), button_rect)
+    font = pygame.font.Font(None, 32)
+    text = font.render("Harvest Ready!", True, (0, 0, 0))
+    screen.blit(text, (popup_rect.centerx - text.get_width() // 2, popup_rect.y + 20))
+    button_text = font.render("Harvest", True, (255, 255, 255))
+    screen.blit(button_text, (button_rect.centerx - button_text.get_width() // 2, button_rect.centery - button_text.get_height() // 2))
 
 if __name__ == "__main__":
     main()
