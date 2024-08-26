@@ -1,222 +1,130 @@
 import pygame
-from strain import Strain
 
-# Initialize Pygame
-pygame.init()
+import time
 
-# Set up some constants
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Doggyland ChronicChronicles")
+from constants import WIDTH, HEIGHT, GREEN, YELLOW, RED, BLACK, GRAY, WHITE, BLUE, LIGHT_GREEN, LIGHT_RED
 
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-LIGHT_GRAY = (200, 200, 200)
+# Font initialization
+pygame.font.init()
+FONT_SMALL = pygame.font.Font(None, 24)
+FONT_MEDIUM = pygame.font.Font(None, 32)
+FONT_LARGE = pygame.font.Font(None, 48)
 
-# Define colors for different strains
-STRAIN_COLORS = {
-    "OG Kush": (0, 100, 0),  # Dark Green
-    "Blue Dream": (0, 0, 255),  # Blue
-    "Sour Diesel": (255, 255, 0)  # Yellow
-}
+# Button dimensions
+BUTTON_WIDTH = 120
+BUTTON_HEIGHT = 50
 
-MENU, PLAYING, SHOP = 0, 1, 2
-current_state = MENU
+# Button definitions
+start_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
+grow_button = pygame.Rect(WIDTH // 2 - 180, HEIGHT - 100, BUTTON_WIDTH, BUTTON_HEIGHT)
+water_button = pygame.Rect(WIDTH // 2 - 60, HEIGHT - 100, BUTTON_WIDTH, BUTTON_HEIGHT)
+fertilize_button = pygame.Rect(WIDTH // 2 + 60, HEIGHT - 100, BUTTON_WIDTH, BUTTON_HEIGHT)
+shop_button = pygame.Rect(WIDTH // 2 + 180, HEIGHT - 100, BUTTON_WIDTH, BUTTON_HEIGHT)
+back_button = pygame.Rect(WIDTH - 130, HEIGHT - 60, 100, 40)
 
-font = pygame.font.Font(None, 36)
-button_font = pygame.font.Font(None, 24)
-
-# Set up buttons
-grow_button = pygame.Rect(10, HEIGHT - 40, 80, 30)
-shop_button = pygame.Rect(100, HEIGHT - 40, 80, 30)
-back_button = pygame.Rect(WIDTH // 2 - 50, HEIGHT - 60, 100, 40)
-start_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 50, 200, 50)
-harvest_button = pygame.Rect(WIDTH // 2 - 75, HEIGHT - 100, 150, 40)
-water_button = pygame.Rect(440, HEIGHT - 80, 120, 50)
-fertilizer_button = pygame.Rect(580, HEIGHT - 80, 120, 50)
-
-def create_strain_buttons(num_strains):
-    return [pygame.Rect(40, 100 + i * 60, WIDTH - 80, 50) for i in range(num_strains)]
-
-def draw_button(screen, rect, text, hover):
-    color = LIGHT_GRAY if hover else WHITE
-    pygame.draw.rect(screen, color, rect)
-    pygame.draw.rect(screen, BLACK, rect, 2)
-    text_surf = button_font.render(text, True, BLACK)
-    text_rect = text_surf.get_rect(center=rect.center)
+def draw_button(screen, button, text, font, color, hover_color):
+    mouse_pos = pygame.mouse.get_pos()
+    if button.collidepoint(mouse_pos):
+        pygame.draw.rect(screen, hover_color, button)
+    else:
+        pygame.draw.rect(screen, color, button)
+    text_surf = font.render(text, True, BLACK)
+    text_rect = text_surf.get_rect(center=button.center)
     screen.blit(text_surf, text_rect)
 
 def draw_menu(screen):
-    screen.fill(BLACK)
-    title = font.render("Doggyland ChronicChronicles", True, WHITE)
-    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 50))
-    draw_button(screen, start_button, "Start Game", False)
+    screen.fill((0, 100, 0))  # Green background
+    title_font = pygame.font.Font(None, 64)
+    title_text = title_font.render("Doggyland ChronicChronicles", True, (255, 255, 255))
+    screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 100))
+    
+    # Update this line to include all required arguments
+    draw_button(screen, start_button, "Start Game", FONT_MEDIUM, (0, 200, 0), (0, 255, 0))
 
-def draw_loading_bar(x, y, width, height, progress):
-    border_color = WHITE
-    fill_color = GREEN
-    pygame.draw.rect(screen, border_color, (x, y, width, height), 2)
-    fill_width = int(width * progress)
-    pygame.draw.rect(screen, fill_color, (x, y, fill_width, height))
+def draw_loading_bar(screen, progress):
+    bar_width = 400
+    bar_height = 40
+    bar_x = (WIDTH - bar_width) // 2
+    bar_y = HEIGHT // 2 + 100
+    pygame.draw.rect(screen, WHITE, (bar_x, bar_y, bar_width, bar_height), 2)
+    pygame.draw.rect(screen, WHITE, (bar_x, bar_y, bar_width * progress, bar_height))
 
-def draw_game(screen, player, current_strain, grow_progress, harvest_ready, water_button, fertilizer_button, growing_rate):
+def draw_game(screen, player, current_strain, grow_progress, harvest_ready, growing_rate, watered_time):
     screen.fill(BLACK)
     
-    # Left column for text information
-    left_margin = 20
-    top_margin = 20
-    line_height = 40
-    
-    info_texts = [
-        f"Money: ${player.inventory.money}",
-        f"Current Strain: {current_strain.name}",
-        f"Growth Progress: {grow_progress:.1f}/{current_strain.growth_time}",
-        f"Potency: {current_strain.calculate_potency():.1f}%",
-        current_strain.get_potency_comparison(),
-        f"Yield: {current_strain.yield_amount}g",
-        current_strain.get_worth_description()
+    # Draw strain info
+    font = pygame.font.Font(None, 24)
+    strain_info = [
+        f"Strain: {current_strain.name}",
+        f"THC: {current_strain.thc_content:.1f}%",
+        f"Growth Rate: {growing_rate:.2f}",
+        f"Typical Potency: {current_strain.typical_potency:.1f}%"
     ]
-    
-    for i, text in enumerate(info_texts):
-        text_surface = font.render(text, True, WHITE)
-        screen.blit(text_surface, (left_margin, top_margin + i * line_height))
+    for i, info in enumerate(strain_info):
+        text = font.render(info, True, WHITE)
+        screen.blit(text, (10, 10 + i * 30))
 
-    # Draw growth progress bar
-    bar_width = 300
-    bar_height = 20
-    bar_x = left_margin
-    bar_y = top_margin + len(info_texts) * line_height + 10
-    growth_percentage = grow_progress / current_strain.growth_time
-    draw_loading_bar(bar_x, bar_y, bar_width, bar_height, growth_percentage)
+    # Calculate image size and position
+    image_height = HEIGHT - 150
+    image_width = int(image_height * 0.6)
+    image_x = (WIDTH - image_width) // 2
+    image_y = 10
 
-    # Right column for plant image
-    plant_image = current_strain.get_current_image(grow_progress)
-    max_height = HEIGHT - 150  # Leave space for buttons and formula
-    max_width = WIDTH // 2  # Use half of the screen width
-    scale_factor = min(max_height / plant_image.get_height(), max_width / plant_image.get_width())
-    new_width = int(plant_image.get_width() * scale_factor)
-    new_height = int(plant_image.get_height() * scale_factor)
-    plant_image = pygame.transform.scale(plant_image, (new_width, new_height))
-    plant_rect = plant_image.get_rect(midright=(WIDTH - 20, HEIGHT // 2))
-    screen.blit(plant_image, plant_rect)
+    # Load and draw the plant image
+    stage = min(int(grow_progress * 3), 2)
+    plant_image = pygame.image.load(current_strain.image_paths[stage])
+    plant_image = pygame.transform.scale(plant_image, (image_width, image_height))
+    screen.blit(plant_image, (image_x, image_y))
 
-    # Bottom row for buttons
-    mouse_pos = pygame.mouse.get_pos()
-    draw_button(screen, grow_button, "Grow (G)", grow_button.collidepoint(mouse_pos))
-    draw_button(screen, shop_button, "Shop (S)", shop_button.collidepoint(mouse_pos))
-    draw_button(screen, water_button, "Water", water_button.collidepoint(mouse_pos))
-    draw_button(screen, fertilizer_button, f"Fertilize (x{growing_rate})", fertilizer_button.collidepoint(mouse_pos))
+    # Define button dimensions and positions
+    button_width = 100
+    button_height = 40
+    button_y = HEIGHT - 50
+    grow_button = pygame.Rect(WIDTH // 5 - button_width // 2, button_y, button_width, button_height)
+    water_button = pygame.Rect(2 * WIDTH // 5 - button_width // 2, button_y, button_width, button_height)
+    fertilize_button = pygame.Rect(3 * WIDTH // 5 - button_width // 2, button_y, button_width, button_height)
+    shop_button = pygame.Rect(4 * WIDTH // 5 - button_width // 2, button_y, button_width, button_height)
 
-    if harvest_ready:
-        draw_button(screen, harvest_button, "Harvest (H)", harvest_button.collidepoint(mouse_pos))
+    # Draw buttons
+    pygame.draw.rect(screen, GREEN, grow_button)
+    pygame.draw.rect(screen, BLUE, water_button)
+    pygame.draw.rect(screen, YELLOW, fertilize_button)
+    pygame.draw.rect(screen, RED, shop_button)
 
-    # Bottom center for formula
-    formula_text = font.render("Price = Base Price * Yield * (1 + Potency%)", True, WHITE)
-    formula_rect = formula_text.get_rect(centerx=WIDTH // 2, bottom=HEIGHT - 20)
-    screen.blit(formula_text, formula_rect)
+    font = pygame.font.Font(None, 28)
+    grow_text = font.render("Grow", True, BLACK)
+    water_text = font.render("Water", True, BLACK)
+    fertilize_text = font.render("Fertilize", True, BLACK)
+    shop_text = font.render("Shop", True, BLACK)
+
+    screen.blit(grow_text, (grow_button.x + 25, grow_button.y + 10))
+    screen.blit(water_text, (water_button.x + 20, water_button.y + 10))
+    screen.blit(fertilize_text, (fertilize_button.x + 10, fertilize_button.y + 10))
+    screen.blit(shop_text, (shop_button.x + 25, shop_button.y + 10))
+
+    # Draw progress bar
+    draw_loading_bar(screen, grow_progress)
+
+    return grow_button, water_button, fertilize_button, shop_button
 
 def draw_shop(screen, strains, strain_buttons):
     screen.fill(BLACK)
-    title = font.render("Strain Shop", True, WHITE)
+    font = pygame.font.Font(None, 32)
+    title = font.render("Shop", True, WHITE)
     screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 20))
-    for i, strain in enumerate(strains):
-        button_rect = strain_buttons[i]
-        hover = button_rect.collidepoint(pygame.mouse.get_pos())
-        draw_button(screen, button_rect, f"{strain.name} - ${strain.yield_amount}", hover)
-    draw_button(screen, back_button, "Back (B)", back_button.collidepoint(pygame.mouse.get_pos()))
 
-strains = [
-    Strain("OG Kush", 20.0, 0.1, 60, 400, "A classic strain with a strong, relaxing high.", 
-           ["images/og_kush_stage1.png", "images/og_kush_stage2.png", "images/og_kush_stage3.png"], max_height=80, typical_potency=20.0),
-    Strain("Blue Dream", 18.0, 0.2, 55, 450, "A balanced hybrid with a sweet berry aroma.", 
-           ["images/blue_dream_stage1.png", "images/blue_dream_stage2.png", "images/blue_dream_stage3.png"], max_height=100, typical_potency=18.0),
-    Strain("Sour Diesel", 22.0, 0.2, 65, 380, "An energizing sativa with a pungent diesel smell.", 
-           ["images/sour_diesel_stage1.png", "images/sour_diesel_stage2.png", "images/sour_diesel_stage3.png"], max_height=120, typical_potency=22.0)
-]
+    for strain, button in zip(strains, strain_buttons):
+        draw_button(screen, button, strain.name, font, GREEN, LIGHT_GREEN)
+        
+    back_button = pygame.Rect(WIDTH - 110, HEIGHT - 60, 100, 50)
+    draw_button(screen, back_button, "Back", font, RED, LIGHT_RED)
+    
+    return back_button, strain_buttons
 
-strain_buttons = create_strain_buttons(len(strains))
-
-def main():
-    global current_state, grow_progress, harvest_ready, current_strain, grow_button_held, growing_rate
-    pygame.init()
-    clock = pygame.time.Clock()
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and current_state == MENU:
-                    current_state = PLAYING
-                elif current_state == PLAYING:
-                    if event.key == pygame.K_g:
-                        grow_button_held = True
-                    elif event.key == pygame.K_h and harvest_ready:
-                        player.inventory.money += current_strain.yield_amount
-                        grow_progress = 0
-                        harvest_ready = False
-                        current_strain = random.choice(strains)
-                        growing_rate = 0.1  # Reset growing rate
-                    elif event.key == pygame.K_s:
-                        current_state = SHOP
-                elif current_state == SHOP:
-                    if event.key == pygame.K_b:
-                        current_state = PLAYING
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_g:
-                    grow_button_held = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if current_state == MENU:
-                    if start_button.collidepoint(event.pos):
-                        current_state = PLAYING
-                elif current_state == PLAYING:
-                    if grow_button.collidepoint(event.pos):
-                        grow_button_held = True
-                    elif shop_button.collidepoint(event.pos):
-                        current_state = SHOP
-                    elif harvest_button.collidepoint(event.pos) and harvest_ready:
-                        player.inventory.money += current_strain.yield_amount
-                        grow_progress = 0
-                        harvest_ready = False
-                        current_strain = random.choice(strains)
-                        growing_rate = 0.1  # Reset growing rate
-                    elif water_button.collidepoint(event.pos):
-                        grow_progress = min(grow_progress + 20, current_strain.growth_time)
-                        if grow_progress >= current_strain.growth_time:
-                            harvest_ready = True
-                    elif fertilizer_button.collidepoint(event.pos):
-                        growing_rate += 0.1
-                elif current_state == SHOP:
-                    if back_button.collidepoint(event.pos):
-                        current_state = PLAYING
-                    else:
-                        for i, button in enumerate(strain_buttons):
-                            if button.collidepoint(event.pos):
-                                current_strain = strains[i]
-                                current_state = PLAYING
-                                growing_rate = 0.1  # Reset growing rate
-                                break
-            if event.type == pygame.MOUSEBUTTONUP:
-                if grow_button.collidepoint(event.pos):
-                    grow_button_held = False
-
-        if current_state == PLAYING and grow_button_held:
-            grow_progress += growing_rate
-            if grow_progress >= current_strain.growth_time:
-                grow_progress = current_strain.growth_time
-                harvest_ready = True
-
-        if current_state == MENU:
-            draw_menu(screen)
-        elif current_state == PLAYING:
-            draw_game(screen, player, current_strain, grow_progress, harvest_ready, water_button, fertilizer_button, growing_rate)
-        elif current_state == SHOP:
-            draw_shop(screen, strains, strain_buttons)
-
-        pygame.display.flip()
-        clock.tick(60)
-
-if __name__ == "__main__":
-    main()
+def create_strain_buttons(num_strains):
+    buttons = []
+    for i in range(num_strains):
+        x = 50 + (i % 3) * (BUTTON_WIDTH + 20)
+        y = 100 + (i // 3) * (BUTTON_HEIGHT + 60)
+        buttons.append(pygame.Rect(x, y, BUTTON_WIDTH, BUTTON_HEIGHT))
+    return buttons

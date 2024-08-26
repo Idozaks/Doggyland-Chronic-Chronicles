@@ -30,17 +30,16 @@ font = pygame.font.Font(None, 36)  # Create a font object with default font and 
 player = Player("John Doe")  # Create an instance of the Player class
 
 class Strain:
-    def __init__(self, name, thc_content, cbd_content, growth_time, yield_amount, description, image_paths, max_height, typical_potency):
+    def __init__(self, name, thc_content, growth_rate, growth_time, yield_amount, description, image_paths, max_height, typical_potency):
         self.name = name
         self.thc_content = thc_content
-        self.cbd_content = cbd_content
+        self.growth_rate = growth_rate
         self.growth_time = growth_time
         self.yield_amount = yield_amount
         self.description = description
-        self.image_paths = image_paths if isinstance(image_paths, list) else [image_paths]
+        self.image_paths = image_paths
         self.max_height = max_height
-        self.typical_potency = typical_potency
-        self.images = self.load_images()
+        self.typical_potency = typical_potency  # Initialize current_potency with typical_potency
 
     def load_images(self):
         images = []
