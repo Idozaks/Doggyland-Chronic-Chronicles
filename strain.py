@@ -1,6 +1,5 @@
 import pygame  # Import the pygame library for game development
 import sys  # Import sys for system-specific parameters and functions
-from player import Player
 import random
 
 # Initialize Pygame
@@ -27,19 +26,23 @@ current_state = MENU  # Set the initial game state to menu
 font = pygame.font.Font(None, 36)  # Create a font object with default font and size 36
 # Font size: Expected range 1 to 100
 
-player = Player("John Doe")  # Create an instance of the Player class
-
 class Strain:
-    def __init__(self, name, thc_content, growth_rate, growth_time, yield_amount, description, image_paths, max_height, typical_potency):
+    def __init__(self, name, potency, yield_factor, growth_time, max_price, description, image_paths, max_height, typical_potency, price):
         self.name = name
-        self.thc_content = thc_content
-        self.growth_rate = growth_rate
+        self.potency = potency
+        self.yield_factor = yield_factor
         self.growth_time = growth_time
-        self.yield_amount = yield_amount
+        self.max_price = max_price
         self.description = description
         self.image_paths = image_paths
         self.max_height = max_height
-        self.typical_potency = typical_potency  # Initialize current_potency with typical_potency
+        self.typical_potency = typical_potency
+        self.price = price
+        self.thc_content = potency * 0.8  # Assuming THC is 80% of total potency
+        self.cbd_content = potency * 0.2  # Assuming CBD is 20% of total potency
+        self.yield_amount = yield_factor * max_height  # Calculate yield based on yield factor and max height
+        self.images = self.load_images()
+        self.disease_resistance = 0.0  # Default 0% resistance to diseases
 
     def load_images(self):
         images = []

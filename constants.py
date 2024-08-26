@@ -2,10 +2,11 @@
 MENU = 0
 PLAYING = 1
 SHOP = 2
+INVENTORY = 3  # Add this new state
 
 # Screen dimensions
 WIDTH = 1024
-HEIGHT = 576
+HEIGHT = 768
 
 # Water effect
 WATER_EFFECT_DURATION = 10  # seconds
