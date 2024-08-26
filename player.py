@@ -7,6 +7,7 @@ class Player:
         self.money = 1000
         self.inventory = Inventory()
         self.current_strain = None
+        self.passive_multiplier = 1.0  # Add this line
 
     def purchase(self, item, price):
         if self.money >= price:

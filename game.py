@@ -12,6 +12,10 @@ from items import Fertilizer, Equipment
 CLICKS_TO_GROW = 15  # Number of clicks required to fully grow a plant
 GROW_INCREMENT = 1 / CLICKS_TO_GROW  # Progress increment per click
 
+PASSIVE_GROWTH_RATE = 0.001  # Base passive growth rate per second
+UPGRADE_COST = 100  # Cost of each upgrade
+UPGRADE_MULTIPLIER = 1.2  # Multiplier for each upgrade
+
 pygame.init()
 
 # Get the screen info
@@ -74,6 +78,7 @@ def main():
     global current_state, grow_progress, harvest_ready, current_strain, grow_button_held, growing_rate, watered_time, grow_increment
     clock = pygame.time.Clock()
     last_state = None  # Keep track of the last state
+    last_update_time = time.time()
 
     # Initialize grow_progress and clicks_to_grow at the start
     grow_progress = 0
@@ -103,6 +108,9 @@ def main():
 
     # Add an inventory button
     inventory_button = pygame.Rect(WIDTH - 140, 10, 120, 40)
+
+    # Add upgrade button
+    upgrade_button = pygame.Rect(WIDTH - 140, 60, 120, 40)
 
     while True:
         for event in pygame.event.get():
@@ -138,6 +146,8 @@ def main():
                                 select_strain_from_inventory()
                         if inventory_button.collidepoint(mouse_pos):
                             current_state = INVENTORY
+                        if upgrade_button.collidepoint(mouse_pos):
+                            upgrade_passive_growth(player)
                     elif current_state == SHOP:
                         if back_button.collidepoint(mouse_pos):
                             print("Button clicked: Back")
@@ -187,6 +197,13 @@ def main():
         else:
             current_growth_rate = growing_rate
 
+        # Update passive growth
+        current_time = time.time()
+        elapsed_time = current_time - last_update_time
+        if current_state == PLAYING and current_strain is not None:
+            passive_growth(elapsed_time)
+        last_update_time = current_time
+
         if current_state == MENU:
             draw_menu(screen)
         elif current_state == PLAYING:
@@ -196,6 +213,11 @@ def main():
                 grow_button, water_button, fertilize_button, shop_button = draw_game(screen, player, current_strain, grow_progress, harvest_ready, grow_increment, watered_time)
                 if harvest_ready:
                     draw_harvest_popup(screen, harvest_popup, harvest_button)
+                
+                # Draw upgrade button
+                pygame.draw.rect(screen, BLUE, upgrade_button)
+                upgrade_text = FONT_SMALL.render("Upgrade", True, WHITE)
+                screen.blit(upgrade_text, (upgrade_button.x + 10, upgrade_button.y + 10))
             # Draw inventory button
             pygame.draw.rect(screen, BLUE, inventory_button)
             inventory_text = FONT_SMALL.render("Inventory", True, WHITE)
@@ -355,6 +377,22 @@ def draw_no_plant_screen(screen, player):
     screen.blit(shop_text, (shop_button.x + 35, shop_button.y + 10))
 
     return shop_button
+
+def passive_growth(elapsed_time):
+    global grow_progress, harvest_ready
+    growth = PASSIVE_GROWTH_RATE * player.passive_multiplier * elapsed_time
+    grow_progress += growth
+    if grow_progress >= 1:
+        grow_progress = 1
+        harvest_ready = True
+
+def upgrade_passive_growth(player):
+    if player.money >= UPGRADE_COST:
+        player.money -= UPGRADE_COST
+        player.passive_multiplier *= UPGRADE_MULTIPLIER
+        print(f"Upgraded passive growth. New multiplier: {player.passive_multiplier:.2f}")
+    else:
+        print("Not enough money to upgrade")
 
 if __name__ == "__main__":
     main()

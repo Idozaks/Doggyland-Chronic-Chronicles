@@ -2,7 +2,7 @@ import pygame
 
 import time
 
-from constants import WIDTH, HEIGHT, GREEN, YELLOW, RED, BLACK, GRAY, WHITE, BLUE, LIGHT_GREEN, LIGHT_RED
+from constants import WIDTH, HEIGHT, GREEN, YELLOW, RED, BLACK, GRAY, WHITE, BLUE, LIGHT_GREEN, LIGHT_RED, WATER_EFFECT_DURATION
 
 # Font initialization
 pygame.font.init()
@@ -57,15 +57,28 @@ def draw_game(screen, player, current_strain, grow_progress, harvest_ready, grow
     strain_info = [
         f"Strain: {current_strain.name}",
         f"THC: {current_strain.thc_content:.1f}%",
-        f"Grow Increment: {grow_increment:.2f}",
+        f"CBD: {current_strain.cbd_content:.1f}%",
+        f"Grow Progress: {grow_progress:.2f}",
+        f"Grow Increment: {grow_increment:.3f}",
+        f"Yield Factor: {current_strain.yield_factor:.2f}",
+        f"Disease Resistance: {current_strain.disease_resistance:.2f}",
         f"Typical Potency: {current_strain.typical_potency:.1f}%"
     ]
     for i, info in enumerate(strain_info):
         text = font.render(info, True, WHITE)
         screen.blit(text, (10, 10 + i * 30))
 
+    # Draw player info (moved to center-right)
+    player_info = [
+        f"Money: ${player.money}",
+        f"Passive Multiplier: {player.passive_multiplier:.2f}x"
+    ]
+    for i, info in enumerate(player_info):
+        text = font.render(info, True, WHITE)
+        screen.blit(text, (WIDTH - 220, HEIGHT // 2 + i * 30))
+
     # Calculate image size and position
-    image_height = HEIGHT - 150
+    image_height = HEIGHT - 250
     image_width = int(image_height * 0.6)
     image_x = (WIDTH - image_width) // 2
     image_y = 10
@@ -75,6 +88,22 @@ def draw_game(screen, player, current_strain, grow_progress, harvest_ready, grow
     plant_image = pygame.image.load(current_strain.image_paths[stage])
     plant_image = pygame.transform.scale(plant_image, (image_width, image_height))
     screen.blit(plant_image, (image_x, image_y))
+
+    # Draw water effect timer (moved up)
+    water_effect_remaining = max(0, WATER_EFFECT_DURATION - (time.time() - watered_time))
+    water_text = font.render(f"Water Effect: {water_effect_remaining:.1f}s", True, BLUE)
+    screen.blit(water_text, (10, HEIGHT - 240))
+
+    # Draw game tips (moved up)
+    tips = [
+        "Press 'G' to grow, 'W' to water, 'F' to fertilize",
+        "Press 'S' for shop, 'I' for inventory",
+        "Upgrade passive growth for idle gains!",
+        "Water and fertilize regularly for best results"
+    ]
+    for i, tip in enumerate(tips):
+        tip_text = font.render(tip, True, YELLOW)
+        screen.blit(tip_text, (10, HEIGHT - 220 + i * 25))
 
     # Define button dimensions and positions
     button_width = 100
@@ -86,24 +115,18 @@ def draw_game(screen, player, current_strain, grow_progress, harvest_ready, grow
     shop_button = pygame.Rect(4 * WIDTH // 5 - button_width // 2, button_y, button_width, button_height)
 
     # Draw buttons
-    pygame.draw.rect(screen, GREEN, grow_button)
-    pygame.draw.rect(screen, BLUE, water_button)
-    pygame.draw.rect(screen, YELLOW, fertilize_button)
-    pygame.draw.rect(screen, RED, shop_button)
-
-    font = pygame.font.Font(None, 28)
-    grow_text = font.render("Grow", True, BLACK)
-    water_text = font.render("Water", True, BLACK)
-    fertilize_text = font.render("Fertilize", True, BLACK)
-    shop_text = font.render("Shop", True, BLACK)
-
-    screen.blit(grow_text, (grow_button.x + 25, grow_button.y + 10))
-    screen.blit(water_text, (water_button.x + 20, water_button.y + 10))
-    screen.blit(fertilize_text, (fertilize_button.x + 10, fertilize_button.y + 10))
-    screen.blit(shop_text, (shop_button.x + 25, shop_button.y + 10))
+    draw_button(screen, grow_button, "Grow", font, GREEN, LIGHT_GREEN)
+    draw_button(screen, water_button, "Water", font, BLUE, (100, 100, 255))
+    draw_button(screen, fertilize_button, "Fertilize", font, YELLOW, (255, 255, 100))
+    draw_button(screen, shop_button, "Shop", font, RED, LIGHT_RED)
 
     # Draw progress bar
     draw_loading_bar(screen, grow_progress)
+
+    # Draw harvest ready indicator
+    if harvest_ready:
+        harvest_text = FONT_LARGE.render("HARVEST READY!", True, GREEN)
+        screen.blit(harvest_text, (WIDTH // 2 - harvest_text.get_width() // 2, HEIGHT // 2 - 50))
 
     return grow_button, water_button, fertilize_button, shop_button
 
